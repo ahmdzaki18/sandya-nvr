@@ -59,17 +59,13 @@ class NvrRec extends BaseCommand
                 break;
             }
 
-            $cmd = [
-                'ffmpeg',
-                '-hide_banner', '-nostdin',
-                '-rtsp_transport', $camera->transport ?? 'tcp',
-                '-i', $input,
-                '-map', '0', '-c', 'copy', '-vsync', '1', '-copyts',
-                '-f', 'segment', '-segment_time', '900', '-reset_timestamps', '1', '-strftime', '1', "$daydir/%H%M%S.mp4",
-                '-map', '0', '-c', 'copy', '-vsync', '1',
-                '-f', 'hls', '-hls_time', '2', '-hls_list_size', '30',
-                '-hls_flags', 'delete_segments+append_list', "$live/index.m3u8",
-                '-vf', 'fps=1/10', '-update', '1', "$live/preview.jpg"
+            $cmd = "ffmpeg -rtsp_transport tcp -i '{$camera['url']}' "
+			. "-c copy -map 0 "
+			. "-f segment -segment_time 60 -reset_timestamps 1 '{$outputPath}/%H%M%S.mp4' "
+			. "-c:v copy -c:a aac "
+			. "-f hls -hls_time 2 -hls_list_size 2 -hls_flags delete_segments -hls_delete_threshold 2 "
+			. "'{$livePath}/index.m3u8' "
+			. "-vf fps=1/10 '{$livePath}/preview.jpg'";
             ];
 
             $process = proc_open($cmd, [STDIN, STDOUT, STDERR], $pipes);

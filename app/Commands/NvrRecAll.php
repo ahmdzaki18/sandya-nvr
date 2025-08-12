@@ -30,7 +30,7 @@ class NvrRecAll extends BaseCommand
                 $cam['id'],   // pakai array syntax
                 $cam['id']
             );
-            CLI::write("Starting Camera {$cam['id']} ({$cam['name']})...");
+            // CLI::write("Starting Camera {$cam['id']} ({$cam['name']})...");
             shell_exec($cmd);
         }
     }
