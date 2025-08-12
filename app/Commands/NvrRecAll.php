@@ -27,10 +27,10 @@ class NvrRecAll extends BaseCommand
             $cmd = sprintf(
                 'php %s spark nvr:rec %d > /var/log/nvr-rec-%d.log 2>&1 &',
                 FCPATH,
-                $cam->id,
-                $cam->id
+                $cam['id'],   // pakai array syntax
+                $cam['id']
             );
-            CLI::write("Starting Camera {$cam->id} ({$cam->name})...");
+            CLI::write("Starting Camera {$cam['id']} ({$cam['name']})...");
             shell_exec($cmd);
         }
     }
