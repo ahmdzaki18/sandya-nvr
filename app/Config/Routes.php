@@ -14,12 +14,12 @@ $routes->get('/', 'Home::index', ['filter'=>'auth']); // dashboard nantinya
 // contoh proteksi role:
 // $routes->get('admin/cameras', 'Admin\Cameras::index', ['filter'=>'auth:role:admin']);
 
-$routes->group('admin', ['filter' => 'auth,role:admin'], static function($routes) {
-    $routes->get('cameras',            'Admin\Cameras::index');
-    $routes->get('cameras/create',     'Admin\Cameras::create');
-    $routes->post('cameras',           'Admin\Cameras::store');
-    $routes->get('cameras/(:num)/edit','Admin\Cameras::edit/$1');
-    $routes->post('cameras/(:num)',    'Admin\Cameras::update/$1');
-    $routes->post('cameras/(:num)/del','Admin\Cameras::delete/$1');
+$routes->group('admin', ['filter' => 'role:admin'], static function($routes) {
+    $routes->get('cameras',             'Admin\Cameras::index');
+    $routes->get('cameras/create',      'Admin\Cameras::create');
+    $routes->post('cameras',            'Admin\Cameras::store');
+    $routes->get('cameras/(:num)/edit', 'Admin\Cameras::edit/$1');
+    $routes->post('cameras/(:num)',     'Admin\Cameras::update/$1');
+    $routes->post('cameras/(:num)/del', 'Admin\Cameras::delete/$1');
     $routes->post('cameras/(:num)/toggle','Admin\Cameras::toggle/$1');
 });
