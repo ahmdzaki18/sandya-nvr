@@ -8,13 +8,14 @@ class CameraModel extends Model
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
 
-    protected $returnType       = 'array';     // <<— penting buat view kamu
+    // ⬇️ Penting: view kamu pakai array, jadi pastikan array
+    protected $returnType       = 'array';
     protected $useSoftDeletes   = true;
 
     protected $allowedFields    = [
         'name','location','host','port','protocol','transport','stream_path',
         'username','password_enc','fps','audio_enabled','is_recording',
-        'notes','created_by'
+        'notes','created_by',
     ];
 
     protected $useTimestamps = true;

@@ -7,22 +7,30 @@ class Dashboard extends BaseController
 {
     public function index()
     {
-        $role = (string)(session('role') ?? '');
+        $role   = (string) (session('role') ?? '');
+        $userId = (int) (session('user_id') ?? 0);
 
-        /** @var CameraModel $cams */
-        $camsModel = model(CameraModel::class);
+        $cam = model(CameraModel::class);
 
         if ($role === 'superadmin') {
-            $cams = $camsModel->asArray()->orderBy('name','asc')->findAll();
+            // semua kamera, termasuk yang is_recording = 0
+            $cams = $cam->asArray()
+                        ->where('deleted_at', null)
+                        ->orderBy('name','asc')
+                        ->findAll();
         } elseif ($role === 'admin') {
-            // kalau mau limit ke kamera yg dia buat, pakai created_by
-            $uid  = (int)(session('user_id') ?? 0);
-            $cams = $camsModel->asArray()
-                ->when($uid > 0, fn($b) => $b->where('created_by', $uid))
-                ->orderBy('name','asc')
-                ->findAll();
+            // kalau mau dibatasi: hanya kamera yang dibuat oleh admin tsb
+            // kalau mau semua kamera juga, tinggal samain seperti superadmin
+            $cams = $cam->asArray()
+                        ->where('deleted_at', null)
+                        ->groupStart()
+                            ->where('created_by', $userId) // boleh dihapus kalau mau lihat semuanya
+                            ->orWhere('created_by', null)
+                        ->groupEnd()
+                        ->orderBy('name','asc')
+                        ->findAll();
         } else {
-            // user biasa: sementara kosong (nantinya bakal pakai tabel assignment)
+            // user biasa (nanti join ke tabel assignment)
             $cams = [];
         }
 

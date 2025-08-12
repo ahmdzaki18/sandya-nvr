@@ -2,28 +2,23 @@
 
 use CodeIgniter\Router\RouteCollection;
 
-/**
- * @var RouteCollection $routes
- */
-$routes->get('/', 'Home::index');
-$routes->get('login', 'Auth::login', ['filter'=>'csrf']);
-$routes->post('login', 'Auth::doLogin', ['filter'=>'csrf']);
-$routes->get('logout', 'Auth::logout');
+/** @var RouteCollection $routes */
 
-$routes->get('/', 'Home::index', ['filter'=>'auth']); // dashboard nantinya
+// Dashboard default
+$routes->get('/', 'Dashboard::index');
 
-$routes->group('admin', ['filter' => 'role:admin'], static function($routes) {
-    $routes->get('cameras',             'Admin\Cameras::index');
-    $routes->get('cameras/create',      'Admin\Cameras::create');
-    $routes->post('cameras',            'Admin\Cameras::store');
-    $routes->get('cameras/(:num)/edit', 'Admin\Cameras::edit/$1');
-    $routes->post('cameras/(:num)',     'Admin\Cameras::update/$1');
-    $routes->post('cameras/(:num)/del', 'Admin\Cameras::delete/$1');
-    $routes->post('cameras/(:num)/toggle','Admin\Cameras::toggle/$1');
-});
-
-// dashboard grid (home)
-$routes->get('/', 'Dashboard::index'); // filter auth sudah global
-
-// play per kamera
+// Detail play (opsional, kalau kamu pakai)
 $routes->get('camera/(:num)', 'Stream::play/$1');
+
+// Group admin
+$routes->group('admin', static function ($routes) {
+    // Cameras CRUD
+    $routes->get('cameras',               'Admin\Cameras::index');
+    $routes->get('cameras/create',        'Admin\Cameras::create');
+    $routes->post('cameras',              'Admin\Cameras::store');
+    $routes->get('cameras/(:num)/edit',   'Admin\Cameras::edit/$1');
+    $routes->post('cameras/(:num)',       'Admin\Cameras::update/$1');
+    $routes->get('cameras/(:num)/delete', 'Admin\Cameras::delete/$1');
+
+    // (opsional) Users, dsb.
+});

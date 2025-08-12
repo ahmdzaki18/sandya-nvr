@@ -28,7 +28,6 @@ class NvrRecAll extends BaseCommand
                 ROOTPATH, (int)$c['id']
             );
 
-            // jalankan background process, simpan resource
             $descriptors = [
                 0 => ['pipe', 'r'],
                 1 => ['file', '/dev/null', 'a'],
@@ -37,15 +36,11 @@ class NvrRecAll extends BaseCommand
             $procs[(int)$c['id']] = proc_open($cmd, $descriptors, $pipes);
         }
 
-        // tunggu sampai semua child selesai
         while (!empty($procs)) {
             foreach ($procs as $id => $proc) {
-                if (!\is_resource($proc)) {
-                    unset($procs[$id]);
-                    continue;
-                }
-                $status = proc_get_status($proc);
-                if ($status === false || $status['running'] === false) {
+                if (!\is_resource($proc)) { unset($procs[$id]); continue; }
+                $st = proc_get_status($proc);
+                if ($st === false || $st['running'] === false) {
                     proc_close($proc);
                     unset($procs[$id]);
                 }
