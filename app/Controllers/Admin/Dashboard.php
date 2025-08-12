@@ -11,18 +11,22 @@ class Dashboard extends BaseController
         $cams = [];
 
         if (in_array($role, ['admin', 'superadmin'], true)) {
-            // Superadmin lihat semua kamera
+            $cameraModel = new CameraModel();
+
             if ($role === 'superadmin') {
-                $cams = (new CameraModel())
+                // Superadmin lihat semua kamera
+                $cams = $cameraModel
                     ->select('id, name, location, is_recording')
                     ->orderBy('name', 'asc')
+                    ->asArray() // <── penting supaya sesuai view
                     ->findAll();
             } else {
                 // Admin lihat kamera yang di-assign
-                $cams = (new CameraModel())
+                $cams = $cameraModel
                     ->select('id, name, location, is_recording')
                     ->where('created_by', session('user_id'))
                     ->orderBy('name', 'asc')
+                    ->asArray() // <── ini juga
                     ->findAll();
             }
         }
