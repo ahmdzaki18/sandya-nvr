@@ -18,19 +18,25 @@ class NvrRecAll extends BaseCommand
             ->where('is_recording', 1)
             ->findAll();
 
-        if (!$cameras) {
+        if (!$cameras || count($cameras) === 0) {
             CLI::error("No active cameras found.");
             return;
         }
 
         foreach ($cameras as $cam) {
+            $id   = $cam['id'];
+            $name = $cam['name'];
+
+            CLI::write("Starting Camera {$id} ({$name})...");
+
+            // Jalankan tiap kamera di background
             $cmd = sprintf(
-                'php %s spark nvr:rec %d > /var/log/nvr-rec-%d.log 2>&1 &',
+                'nohup php %sspark nvr:rec %d > /var/log/nvr-rec-%d.log 2>&1 &',
                 FCPATH,
-                $cam['id'],   // pakai array syntax
-                $cam['id']
+                $id,
+                $id
             );
-            // CLI::write("Starting Camera {$cam['id']} ({$cam['name']})...");
+
             shell_exec($cmd);
         }
     }
