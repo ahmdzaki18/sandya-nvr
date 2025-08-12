@@ -22,3 +22,5 @@ $routes->group('admin', static function ($routes) {
 
     // (opsional) Users, dsb.
 });
+
+$routes->post('admin/cameras/(:num)/toggle', 'Admin\Cameras::toggle/$1');
