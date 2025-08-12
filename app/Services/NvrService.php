@@ -1,96 +1,93 @@
 <?php
 
-namespace App\Services;
+namespace App\Commands;
 
-use CodeIgniter\Files\File;
-use Config\Database;
+use App\Models\CameraModel;
 
 class NvrService
 {
-    public function record(int $cameraId)
+    public static function tz(): void
     {
-        $db = Database::connect();
-
-        $query = $db->query("
-            SELECT name, host, port, protocol, transport, stream_path,
-                   COALESCE(username, '') AS username,
-                   COALESCE(password_enc, '') AS password_enc,
-                   audio_enabled, is_recording
-            FROM cameras
-            WHERE id = ? AND deleted_at IS NULL
-        ", [$cameraId]);
-
-        $cam = $query->getRowArray();
-
-        if (!$cam) {
-            echo "Camera {$cameraId} not found\n";
-            return;
+        // Pastikan zona waktu lokal
+        if (function_exists('date_default_timezone_set')) {
+            date_default_timezone_set('Asia/Jakarta');
         }
+    }
 
-        // Direktori target
-        $baseDir = "/CBR-NFS-VIDEO/CBR-NVR-SRVR/{$cam['name']}";
-        $liveDir = "{$baseDir}/live";
-        $dayDir  = "{$baseDir}/" . date('Y-m-d');
+    public static function getCamera(int $id): ?array
+    {
+        $cam = model(CameraModel::class)->find($id);
+        if (!$cam || !empty($cam['deleted_at'])) {
+            return null;
+        }
+        return $cam;
+    }
 
-        // Buat folder jika belum ada
-        @mkdir($liveDir, 0775, true);
-        @mkdir($dayDir, 0775, true);
+    public static function buildInput(array $cam): array
+    {
+        $user = trim((string)($cam['username'] ?? ''));
+        $pass = '';
 
-        // Decrypt password
-        $plainPwd = '';
         if (!empty($cam['password_enc'])) {
-            $enc = service('encrypter');
             try {
-                $plainPwd = $enc->decrypt(base64_decode($cam['password_enc'], true));
+                $raw = base64_decode($cam['password_enc'], true);
+                if ($raw !== false) {
+                    $pass = service('encrypter')->decrypt($raw);
+                }
             } catch (\Throwable $e) {
-                $plainPwd = '';
+                $pass = '';
             }
         }
 
-        // Encode untuk URL
-        $uenc = rawurlencode($cam['username']);
-        $penc = rawurlencode($plainPwd);
+        $auth = '';
+        if ($user !== '' || $pass !== '') {
+            $u = rawurlencode($user);
+            $p = rawurlencode($pass);
+            $auth = $u . (($p !== '') ? (':' . $p) : '') . '@';
+        }
 
-        // Bangun URL input
-        switch ($cam['protocol']) {
+        $proto = strtolower((string)($cam['protocol'] ?? 'rtsp'));
+        $host  = (string)($cam['host'] ?? '');
+        $port  = (int)($cam['port'] ?? 554);
+        $path  = (string)($cam['stream_path'] ?? '/');
+        $trans = strtolower((string)($cam['transport'] ?? 'tcp'));
+
+        $rtspOpt = [];
+        $input   = '';
+
+        switch ($proto) {
             case 'rtsp':
-                $auth = $uenc ? "{$uenc}" : '';
-                $auth = $penc ? "{$auth}:{$penc}" : $auth;
-                $auth = $auth ? "{$auth}@" : '';
-                $input = "rtsp://{$auth}{$cam['host']}:{$cam['port']}{$cam['stream_path']}";
-                $rtspOpt = ['-rtsp_transport', $cam['transport']];
+                $input   = "rtsp://{$auth}{$host}:{$port}{$path}";
+                $rtspOpt = ['-rtsp_transport', $trans === 'udp' ? 'udp' : 'tcp'];
                 break;
-
             case 'rtmp':
-                $input = "rtmp://{$cam['host']}:{$cam['port']}{$cam['stream_path']}";
-                $rtspOpt = [];
+                $input = "rtmp://{$host}:{$port}{$path}";
                 break;
-
             case 'hls':
-                $input = "http://{$cam['host']}:{$cam['port']}{$cam['stream_path']}";
-                $rtspOpt = [];
+                $input = "http://{$host}:{$port}{$path}";
                 break;
-
             default:
-                $input = "rtsp://{$cam['host']}:{$cam['port']}{$cam['stream_path']}";
-                $rtspOpt = ['-rtsp_transport', $cam['transport']];
+                $input   = "rtsp://{$auth}{$host}:{$port}{$path}";
+                $rtspOpt = ['-rtsp_transport', $trans === 'udp' ? 'udp' : 'tcp'];
                 break;
         }
 
-        // Jalankan ffmpeg
-        $ffmpeg = '/usr/bin/ffmpeg';
+        return [$input, $rtspOpt];
+    }
 
-        $cmd = "ffmpeg -rtsp_transport tcp -i '{$input}' "
-		. "-map 0 -c copy -movflags +faststart "
-		. "-f segment -segment_time 900 -reset_timestamps 1 -strftime 1 '{$daydir}/%H%M%S.mp4' "
-		. "-map 0 -c copy "
-		. "-f hls -hls_time 2 -hls_list_size 30 -hls_flags delete_segments+append_list "
-		. "'{$live}/index.m3u8' "
-		. "-vf fps=1/10 -update 1 '{$live}/preview.jpg'";
+    public static function ensureDirs(string $baseName): array
+    {
+        // /CBR-NFS-VIDEO/CBR-NVR-SRVR/{CAMERA}/YYYY-MM-DD
+        $base = "/CBR-NFS-VIDEO/CBR-NVR-SRVR/{$baseName}";
+        $live = "{$base}/live";
+        $dateFolder = date('Y-m-d');
+        $dayDir = "{$base}/{$dateFolder}";
 
-        echo "Starting recording for Camera {$cameraId} ({$cam['name']})...\n";
-
-        // Replace process dengan ffmpeg
-        pcntl_exec($cmd[0], array_slice($cmd, 1));
+        foreach ([$base, $live, $dayDir] as $d) {
+            if (!is_dir($d)) {
+                @mkdir($d, 0775, true);
+            }
+        }
+        return [$base, $live, $dayDir];
     }
 }
