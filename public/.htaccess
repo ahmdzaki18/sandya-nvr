@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+    Options -Indexes
+    RewriteEngine On
+
+    # Pastikan base dir sesuai
+    RewriteBase /
+
+    # Jika ada file/folder yang diminta, skip
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Semua request lempar ke index.php
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+<IfModule !mod_rewrite.c>
+    # Fallback kalau mod_rewrite tidak aktif
+    <IfModule mod_alias.c>
+        RedirectMatch 307 ^/$ /index.php/
+    </IfModule>
+</IfModule>
+
+# Proteksi file sensitif
+<FilesMatch "(^\.|composer\.(json|lock)|env|phpunit\.xml\.dist|\.git|\.svn)">
+    Require all denied
+</FilesMatch>
