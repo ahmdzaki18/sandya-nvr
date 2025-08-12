@@ -85,17 +85,28 @@ class NvrService
 			$rtspOpt,
 			['-i', $input],
 		
-			// Output MP4 per 15 menit
-			['-map', '0', '-c', 'copy', '-movflags', '+faststart', '-vsync', '1', '-copyts',
-			'-f', 'segment', '-segment_time', '900', '-reset_timestamps', '1', '-strftime', '1', "{$dayDir}/%H%M%S.mp4"],
+			// Simpan MP4
+			[
+				'-map', '0', '-c', 'copy', '-movflags', '+faststart', '-vsync', '1', '-copyts',
+				'-f', 'segment', '-segment_time', '900', '-reset_timestamps', '1', '-strftime', '1',
+				"{$dayDir}/%H%M%S.mp4"
+			],
 		
-			// Output HLS live streaming
-			['-map', '0', '-c', 'copy', '-vsync', '1',
-			'-f', 'hls', '-hls_time', '2', '-hls_list_size', '30', '-hls_flags', 'delete_segments+append_list', "{$liveDir}/index.m3u8"],
+			// Simpan HLS (live)
+			[
+				'-map', '0', '-c', 'copy', '-vsync', '1',
+				'-f', 'hls', '-hls_time', '2', '-hls_list_size', '30',
+				'-hls_flags', 'delete_segments+append_list',
+				"{$liveDir}/index.m3u8"
+			],
 		
-			// Preview image setiap 10 detik
-			['-vf', 'fps=1/10', '-update', '1', "{$liveDir}/preview.jpg"]
+			// Simpan Preview JPG
+			[
+				'-vf', 'fps=1/10', '-update', '1',
+				"{$liveDir}/preview.jpg"
+			]
 		);
+
 
 
         echo "Starting recording for Camera {$cameraId} ({$cam['name']})...\n";
