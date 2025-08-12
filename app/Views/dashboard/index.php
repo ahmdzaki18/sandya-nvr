@@ -1,37 +1,33 @@
 <?= $this->extend('layout/main') ?>
 <?= $this->section('content') ?>
-<h4 class="mb-3">Dashboard</h4>
-<div class="alert alert-success">
-  Halo, <b><?= esc(session('display') ?? session('username')) ?></b>! Role: <code><?= esc(session('role') ?? '-') ?></code>
-</div>
+<h5 class="mb-3">All Cameras</h5>
 
+<?php if(session('error')): ?><div class="alert alert-danger"><?= esc(session('error')) ?></div><?php endif; ?>
 <div class="row g-3">
-  <div class="col-md-4">
-    <div class="card shadow-sm">
+<?php foreach ($cams as $c): ?>
+  <?php $thumb = '/videos/'.rawurlencode($c['name']).'/live/preview.jpg?ts='.time(); ?>
+  <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+    <div class="card shadow-sm h-100">
+      <img src="<?= $thumb ?>" class="card-img-top" alt="preview" onerror="this.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='">
       <div class="card-body">
-        <h6 class="card-title mb-2">Cameras</h6>
-        <p class="text-muted small mb-3">Kelola kamera & assign ke dashboard.</p>
-        <a class="btn btn-primary btn-sm" href="/admin/cameras">Open</a>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-semibold"><?= esc($c['name']) ?></div>
+            <div class="text-muted small"><?= esc($c['location'] ?? '-') ?></div>
+          </div>
+          <?php if($c['is_recording']): ?>
+            <span class="badge bg-success">REC</span>
+          <?php else: ?>
+            <span class="badge bg-secondary">OFF</span>
+          <?php endif; ?>
+        </div>
+        <div class="mt-2 d-flex gap-2">
+          <a class="btn btn-sm btn-primary" href="/camera/<?= $c['id'] ?>" target="_blank">Play</a>
+          <a class="btn btn-sm btn-outline-secondary" href="/admin/cameras/<?= $c['id'] ?>/edit">Edit</a>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title mb-2">Recordings</h6>
-        <p class="text-muted small mb-3">Cari & putar rekaman 15‑menit.</p>
-        <a class="btn btn-primary btn-sm" href="/recordings">Open</a>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-4">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h6 class="card-title mb-2">Dashboards</h6>
-        <p class="text-muted small mb-3">Atur dashboard custom untuk user.</p>
-        <a class="btn btn-primary btn-sm" href="/admin/dashboards">Open</a>
-      </div>
-    </div>
-  </div>
+<?php endforeach; ?>
 </div>
 <?= $this->endSection() ?>
