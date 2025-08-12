@@ -26,13 +26,12 @@ class NvrRec extends BaseCommand
             return;
         }
 
-        $base = "/CBR-NFS-VIDEO/CBR-NVR-SRVR/{$camera->name}";
-        $live = "$base/live";
-        $today = date('Y-m-d');
-        $daydir = "$base/$today";
+        $baseDir = "/CBR-NFS-VIDEO/CBR-NVR-SRVR/{$camera->name}";
+        $liveDir = "{$baseDir}/live";
+        $dayDir  = "{$baseDir}/" . date('Y-m-d');
 
-        @mkdir($live, 0775, true);
-        @mkdir($daydir, 0775, true);
+        @mkdir($liveDir, 0775, true);
+        @mkdir($dayDir, 0775, true);
 
         $username = rawurlencode($camera->username ?? '');
         $password = '';
@@ -52,20 +51,28 @@ class NvrRec extends BaseCommand
         CLI::write("Starting recording for Camera {$id} ({$camera->name})");
 
         while (true) {
-            // cek status di DB
-            $status = model(CameraModel::class)->select('is_recording')->find($id)->is_recording;
+            $status = model(CameraModel::class)
+                ->select('is_recording')
+                ->find($id)
+                ->is_recording ?? 0;
+
             if (!$status) {
                 CLI::write("Recording stopped for Camera {$id}");
                 break;
             }
 
-            $cmd = "ffmpeg -rtsp_transport tcp -i '{$camera['url']}' "
-			. "-c copy -map 0 "
-			. "-f segment -segment_time 60 -reset_timestamps 1 '{$outputPath}/%H%M%S.mp4' "
-			. "-c:v copy -c:a aac "
-			. "-f hls -hls_time 2 -hls_list_size 2 -hls_flags delete_segments -hls_delete_threshold 2 "
-			. "'{$livePath}/index.m3u8' "
-			. "-vf fps=1/10 '{$livePath}/preview.jpg'";
+            // ffmpeg command untuk MP4 tidak corrupt
+            $cmd = [
+                'ffmpeg', '-hide_banner', '-nostdin', '-rtsp_transport', 'tcp',
+                '-i', $input,
+                // Rekaman MP4 segmented 15 menit
+                '-map', '0', '-c', 'copy', '-vsync', '1', '-movflags', '+faststart',
+                '-f', 'segment', '-segment_time', '900', '-reset_timestamps', '1', '-strftime', '1', "{$dayDir}/%H%M%S.mp4",
+                // Live HLS
+                '-map', '0', '-c', 'copy', '-vsync', '1',
+                '-f', 'hls', '-hls_time', '2', '-hls_list_size', '30', '-hls_flags', 'delete_segments+append_list', "{$liveDir}/index.m3u8",
+                // Preview gambar
+                '-vf', 'fps=1/10', '-update', '1', "{$liveDir}/preview.jpg"
             ];
 
             $process = proc_open($cmd, [STDIN, STDOUT, STDERR], $pipes);
@@ -73,7 +80,7 @@ class NvrRec extends BaseCommand
                 proc_close($process);
             }
 
-            sleep(2); // biar ga looping terlalu cepet
+            sleep(2);
         }
     }
 }
