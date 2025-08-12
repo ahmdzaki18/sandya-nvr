@@ -5,6 +5,6 @@ class Home extends BaseController
 {
     public function index()
     {
-        return view('welcome_message'); // nanti ganti ke dashboard
+        return view('dashboard/index', ['title' => 'Sandya NVR - Dashboard']);
     }
 }
