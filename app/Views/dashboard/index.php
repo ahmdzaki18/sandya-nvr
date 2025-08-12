@@ -1,5 +1,6 @@
 <?= $this->extend('layout/main') ?>
 <?= $this->section('content') ?>
+<?php $cams = $cams ?? []; ?>
 <h5 class="mb-3">All Cameras</h5>
 
 <?php if(session('error')): ?><div class="alert alert-danger"><?= esc(session('error')) ?></div><?php endif; ?>

@@ -7,11 +7,10 @@ class Dashboard extends BaseController
 {
     public function index()
     {
-        $role = session('role') ?? 'user';
         $cams = (new CameraModel())
             ->select('id,name,location,is_recording')
             ->orderBy('name','asc')
-            ->findAll(); // TODO: filter by user dashboards/ACL
+            ->findAll(); // TODO: nanti filter per user
 
         return view('dashboard/index', [
             'title' => 'Dashboard',
