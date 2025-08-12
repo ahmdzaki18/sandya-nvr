@@ -27,8 +27,3 @@ $routes->get('/', 'Dashboard::index'); // filter auth sudah global
 
 // play per kamera
 $routes->get('camera/(:num)', 'Stream::play/$1');
-
-// (stub) admin/dashboards biar gak 404 dulu
-$routes->group('admin', ['filters' => ['auth','role:admin']], static function($r){
-    $r->get('dashboards', 'Admin\Dashboards::index'); // nanti kita isi
-});
