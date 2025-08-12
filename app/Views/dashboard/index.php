@@ -1,5 +1,6 @@
 <?= $this->extend('layout/main') ?>
 <?= $this->section('content') ?>
+<?php $role = $role ?? (session('role') ?? ''); $cams = $cams ?? []; ?>
 
 <h5 class="mb-3 text-center">All Cameras</h5>
 

@@ -111,28 +111,41 @@ class Cameras extends BaseController
     }
 
     public function update($id)
-    {
-        $item = $this->cams->find($id);
-        if (! $item) {
-            return redirect()->to('/admin/cameras')->with('error', 'Not found');
-        }
+	{
+		$item = $this->cams->find($id);
+		if (! $item) {
+			return redirect()->to('/admin/cameras')->with('error', 'Not found');
+		}
+	
+		$post = $this->request->getPost();
+		$post['id'] = (string) $id; // untuk placeholder {id}
+	
+		if (! $this->validateData($post, $this->rules, $this->messages)) {
+			return redirect()->back()->with('error', 'Please fix the form.')->withInput();
+		}
+	
+		try {
+			$payload = $this->payloadFromRequest($post, $item);
+	
+			// simpan dulu
+			$this->cams->update($id, $payload);
+	
+			// kalau field is_recording ikut dikirim & berubah -> sinkronkan service
+			if (array_key_exists('is_recording', $payload)) {
+				$old = (int) ($item['is_recording'] ?? 0);
+				$new = (int) $payload['is_recording'];
+				if ($old !== $new) {
+					$this->syncRecorder((int) $id, $new); // START/STOP nvr-rec@id
+				}
+			}
+	
+			return redirect()->to('/admin/cameras')->with('success', 'Camera updated.');
+		} catch (\Throwable $e) {
+			log_message('error', 'camera.update: {msg}', ['msg' => $e->getMessage()]);
+			return redirect()->back()->with('error', 'Failed to update camera.')->withInput();
+		}
+	}
 
-        $post = $this->request->getPost();
-        $post['id'] = (string) $id; // penting utk is_unique ignore diri sendiri
-
-        if (! $this->validateData($post, $this->rules, $this->messages)) {
-            return redirect()->back()->with('error', 'Please fix the form.')->withInput();
-        }
-
-        try {
-            $payload = $this->payloadFromRequest($post, $item);
-            $this->cams->update($id, $payload);
-            return redirect()->to('/admin/cameras')->with('success', 'Camera updated.');
-        } catch (\Throwable $e) {
-            log_message('error', 'camera.update: {msg}', ['msg' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Failed to update camera.')->withInput();
-        }
-    }
 
     public function delete($id)
     {
@@ -146,14 +159,17 @@ class Cameras extends BaseController
     }
 
     public function toggle($id)
-    {
-        $item = $this->cams->find($id);
-        if ($item) {
-            $this->cams->update($id, ['is_recording' => $item['is_recording'] ? 0 : 1]);
-            return redirect()->back()->with('success', 'Recording toggled.');
-        }
-        return redirect()->back()->with('error', 'Camera not found.');
-    }
+	{
+		$item = $this->cams->find($id);
+		if ($item) {
+			$new = $item['is_recording'] ? 0 : 1;
+			$this->cams->update($id, ['is_recording' => $new]);
+			$this->syncRecorder((int)$id, (int)$new);
+			return redirect()->back()->with('success', 'Recording '.($new?'ON':'OFF'));
+		}
+		return redirect()->back()->with('error', 'Camera not found.');
+	}
+
 
     // ================== helpers ==================
 
@@ -209,4 +225,18 @@ class Cameras extends BaseController
             return $raw; // fallback
         }
     }
+	
+	private function syncRecorder(int $id, int $isRecording): void
+	{
+		$cmd = $isRecording ? "/bin/systemctl start nvr-rec@$id"
+							: "/bin/systemctl stop nvr-rec@$id";
+		@exec('sudo ' . $cmd . ' 2>&1', $out, $code);
+		log_message('info', 'recorder sync cam {id} -> {state} (exit {code}): {out}', [
+			'id' => $id,
+			'state' => $isRecording ? 'START' : 'STOP',
+			'code' => $code,
+			'out' => implode("\n", $out ?? []),
+		]);
+	}
+
 }
