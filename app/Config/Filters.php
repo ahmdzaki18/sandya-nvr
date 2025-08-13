@@ -4,10 +4,14 @@ use CodeIgniter\Config\BaseConfig;
 
 class Filters extends BaseConfig
 {
-    public array $aliases = [
-        'csrf'    => \CodeIgniter\Filters\CSRF::class,
-        'toolbar' => \CodeIgniter\Filters\DebugToolbar::class,
-    ];
+    public $aliases = [
+		'csrf'     => \CodeIgniter\Filters\CSRF::class,
+		'toolbar'  => \CodeIgniter\Filters\DebugToolbar::class,
+		'honeypot' => \CodeIgniter\Filters\Honeypot::class,
+	
+		// Tambahan untuk auth
+		'auth'     => \App\Filters\AuthFilter::class,
+	];
 
     public array $globals = [
         'before' => [
