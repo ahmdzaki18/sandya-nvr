@@ -1,89 +1,78 @@
 <?php
+
 namespace App\Controllers;
 
+use App\Controllers\BaseController;
 use App\Models\UserModel;
-use App\Libraries\LdapLib;
+use App\Models\UserRoleModel;
 
 class Auth extends BaseController
 {
+    /** halaman login (GET) */
     public function login()
     {
-        return view('auth/login');
+        if (session()->get('isLoggedIn')) {
+            return redirect()->to('/dashboard');
+        }
+        return view('auth/login', ['title' => 'Login']);
     }
 
-    public function doLogin()
+    /** proses login (POST) */
+    public function attemptLogin()
     {
-        $username = trim($this->request->getPost('username') ?? '');
-        $password = (string)($this->request->getPost('password') ?? '');
+        $req = $this->request;
+
+        $username = trim((string) $req->getPost('username'));
+        $password = (string) $req->getPost('password');
+
+        if ($username === '' || $password === '') {
+            return redirect()->back()->with('error', 'Username / password wajib diisi.')->withInput();
+        }
 
         $users = new UserModel();
-        $user  = $users->where('username',$username)->where('is_active',1)->first();
+        $user  = $users->where('username', $username)
+                       ->where('deleted_at', null)
+                       ->first();
 
-        // Try LOCAL first if exists as local
-        if ($user && $user['provider']==='local') {
-            if (password_verify($password, $user['password_hash'] ?? '')) {
-                $this->setSession($user);
-                return redirect()->to('/');
-            }
+        // user tidak ada
+        if (!$user) {
+            return redirect()->back()->with('error', 'User tidak ditemukan.')->withInput();
         }
 
-        // Try LDAP
-        $ldap = new LdapLib();
-        $info = $ldap->login($username, $password);
-        if ($info !== false) {
-            // upsert user as ldap provider (cache display_name/email)
-            if (!$user) {
-                $uid = $users->insert([
-                    'username'     => $username,
-                    'provider'     => 'ldap',
-                    'display_name' => $info['nama_lengkap'],
-                    'email'        => $info['email'],
-                    'ldap_dn'      => $info['dn'],
-                    'is_active'    => 1,
-                ], true);
-                $user = $users->find($uid);
-            } else {
-                // refresh cache silently
-                $users->update($user['id'], [
-                    'provider'=>'ldap',
-                    'display_name'=>$info['nama_lengkap'],
-                    'email'=>$info['email'],
-                    'ldap_dn'=>$info['dn'],
-                ]);
-                $user = $users->find($user['id']);
-            }
-            $this->setSession($user);
-            return redirect()->to('/');
+        // nonaktif
+        if (empty($user['is_active'])) {
+            return redirect()->back()->with('error', 'Akun nonaktif.')->withInput();
         }
 
-        return redirect()->back()->with('error','Invalid credentials')->withInput();
+        // local password check (untuk provider=local). LDAP akan kita garap terpisah.
+        $ok = password_verify($password, (string) ($user['password_hash'] ?? ''));
+        if (!$ok) {
+            return redirect()->back()->with('error', 'Password salah.')->withInput();
+        }
+
+        // AMBIL ROLE dari tabel pivot user_roles -> roles
+        $roleName = (new UserRoleModel())->getRoleNameByUserId((int) $user['id']) ?? 'user';
+
+        // set session
+        session()->set([
+            'isLoggedIn' => true,
+            'user_id'    => (int) $user['id'],
+            'username'   => $user['username'],
+            'display'    => $user['display_name'] ?? $user['username'],
+            'email'      => $user['email'] ?? '',
+            'role'       => $roleName, // <— hanya dari tabel roles
+        ]);
+
+        // update last_login_at
+        $users->update($user['id'], ['last_login_at' => date('Y-m-d H:i:s')]);
+
+        return redirect()->to('/dashboard');
     }
 
+    /** logout (GET/POST) */
     public function logout()
     {
         session()->destroy();
         return redirect()->to('/login');
-    }
-
-    private function setSession(array $user): void
-    {
-        // fetch role name
-        $db = db_connect();
-        $role = $db->table('user_roles ur')
-                   ->select('r.name')
-                   ->join('roles r','r.id=ur.role_id','left')
-                   ->where('ur.user_id',$user['id'])->get()->getRowArray()['name'] ?? null;
-
-        session()->set([
-            'user_id'   => $user['id'],
-            'username'  => $user['username'],
-            'display'   => $user['display_name'] ?? $user['username'],
-            'role'      => $role,
-            'provider'  => $user['provider'],
-            'logged_in' => true,
-        ]);
-
-        $users = new UserModel();
-        $users->update($user['id'], ['last_login_at'=>date('Y-m-d H:i:s')]);
     }
 }

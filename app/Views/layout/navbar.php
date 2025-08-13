@@ -1,40 +1,23 @@
-<?php
-$uri    = uri_string();
-$role   = session('role') ?? '';
-$logged = (bool) session('logged_in');
-$active = function (string $path) use ($uri): string {
-    if ($path === '/') return $uri === '' ? 'active' : '';
-    $path = ltrim($path, '/');
-    return str_starts_with($uri, $path) ? 'active' : '';
-};
-?>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <a class="navbar-brand" href="/">Sandya NVR</a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navs">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+<?php $role = session('role') ?? ''; ?>
+<nav class="navbar navbar-dark bg-dark px-3">
+  <a class="navbar-brand" href="/">Sandya NVR</a>
 
-    <div class="collapse navbar-collapse" id="navs">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link <?= $active('/') ?>" href="/">Dashboard</a></li>
+  <ul class="navbar-nav flex-row gap-3">
+    <li class="nav-item"><a class="nav-link" href="/dashboard">Dashboard</a></li>
 
-        <?php if ($role === 'admin' || $role === 'superadmin'): ?>
-          <li class="nav-item"><a class="nav-link <?= $active('admin/cameras') ?>" href="/admin/cameras">Cameras</a></li>
-        <?php endif; ?>
+    <?php if ($role === 'admin' || $role === 'superadmin'): ?>
+      <li class="nav-item"><a class="nav-link" href="/admin/cameras">Cameras</a></li>
+      <li class="nav-item"><a class="nav-link" href="/admin/users">Users</a></li>
+    <?php endif; ?>
 
-        <?php if ($role === 'superadmin'): ?>
-          <li class="nav-item"><a class="nav-link <?= $active('admin/users') ?>" href="/admin/users">Users</a></li>
-        <?php endif; ?>
-      </ul>
+    <li class="nav-item">
+      <span class="nav-link text-white-50">
+        <?= esc( session('display') ) ?> (<?= esc($role ?: '-') ?>)
+      </span>
+    </li>
 
-      <?php if ($logged): ?>
-        <span class="navbar-text me-3">
-          <?= esc(session('display') ?? session('username')) ?>
-          <span class="text-secondary">(<?= esc($role ?: '-') ?>)</span>
-        </span>
-        <a class="btn btn-outline-light btn-sm" href="/logout">Logout</a>
-      <?php endif; ?>
-    </div>
-  </div>
+    <li class="nav-item">
+      <a class="btn btn-outline-light btn-sm" href="/logout">Logout</a>
+    </li>
+  </ul>
 </nav>
